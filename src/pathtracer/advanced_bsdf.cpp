@@ -94,6 +94,12 @@ namespace CGL {
     Vector3D RefractionBSDF::sample_f(const Vector3D wo, Vector3D* wi, double* pdf) {
         // TODO Project 3-2: Part 1
         // Implement RefractionBSDF
+        *pdf = 1.;
+        bool refracts = refract(wo, wi, ior);
+        double eta = (wo.z > 0) ? 1./ior : ior;
+        if (refracts) {
+            return transmittance / abs_cos_theta(*wi) / (eta * eta);
+        }
         return Vector3D();
     }
 
@@ -148,7 +154,13 @@ namespace CGL {
         // Return false if refraction does not occur due to total internal reflection
         // and true otherwise. When dot(wo,n) is positive, then wo corresponds to a
         // ray entering the surface through vacuum.
-
+        double n = (wo.z > 0) ? 1./ior : ior;
+        double oppD = (wo.z > 0) ? -1. : 1.;
+        double tir = 1. - (n * n) * (1 - cos_theta(wo) * cos_theta(wo));
+        if (tir < 0) {
+            return false;
+        }
+        *wi = Vector3D(-n * wo.x, -n * wo.y, oppD * sqrt(tir));
         return true;
 
     }
