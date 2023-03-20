@@ -22,7 +22,6 @@ namespace CGL {
 
         // TODO Project 3-2: Part 1
         // Implement MirrorBSDF
-        return Vector3D();
     }
 
     void MirrorBSDF::render_debugger_node()
@@ -137,8 +136,6 @@ namespace CGL {
         // TODO Project 3-2: Part 1
         // Implement reflection of wo about normal (0,0,1) and store result in wi.
         *wi = Vector3D(-wo.x, -wo.y, wo.z);
-
-
     }
 
     bool BSDF::refract(const Vector3D wo, Vector3D* wi, double ior) {
