@@ -46,22 +46,38 @@ namespace CGL {
         // TODO Project 3-2: Part 2
         // Compute Beckmann normal distribution function (NDF) here.
         // You will need the roughness alpha.
-        return 1.0;
+        double theta_h = acos(h.z);
+        return  exp(-1. * pow(tan(theta_h) / alpha, 2)) / (PI * pow(alpha, 2) * pow(h.z, 4));
     }
 
     Vector3D MicrofacetBSDF::F(const Vector3D wi) {
         // TODO Project 3-2: Part 2
         // Compute Fresnel term for reflection on dielectric-conductor interface.
         // You will need both eta and etaK, both of which are Vector3D.
-
-        return Vector3D();
+        double cos_theta_i = abs_cos_theta(wi);
+        // helper variable for better calculations
+        Vector3D sum = (eta * eta + k * k);
+        Vector3D product = 2. * eta * cos_theta_i;
+        double squared = pow(cos_theta_i, 2);
+        // literally from website
+        Vector3D R_s = (sum - product + squared) / (sum + product + squared);
+        Vector3D R_p = (sum * squared - product + 1.) / (sum* squared + product + 1.);
+        Vector3D F = (R_s + R_p) / 2.;
+        return F;
     }
 
     Vector3D MicrofacetBSDF::f(const Vector3D wo, const Vector3D wi) {
         // TODO Project 3-2: Part 2
         // Implement microfacet model here.
+        // check if wi and wo are valid, if not, return 0
+        if (wo.z > 0 && wi.z > 0) {
+            Vector3D h = (wo + wi) / (wo + wi).norm();
+            Vector3D f = (F(wi) * G(wo, wi) * D(h)) / (4. * wo.z * wi.z);
+            return f;
+        }
+        return Vector3D(0.);
 
-        return Vector3D();
+        // return Vector3D();
     }
 
     Vector3D MicrofacetBSDF::sample_f(const Vector3D wo, Vector3D* wi, double* pdf) {
@@ -70,7 +86,38 @@ namespace CGL {
         // Note: You should fill in the sampled direction *wi and the corresponding *pdf,
         //       and return the sampled BRDF value.
 
-        *wi = cosineHemisphereSampler.get_sample(pdf);
+        // default cosine sampling code
+        // *wi = cosineHemisphereSampler.get_sample(pdf);
+        // return MicrofacetBSDF::f(wo, *wi);
+
+        // get sample and compute theta_h/phi_h with r1 and r2
+        Vector2D r = sampler.get_sample();
+        double r1 = r.x;
+        double r2 = r.y;
+        double theta_h = atan(sqrt(-1. * pow(alpha, 2) * log(1. - r1)));
+        double phi_h = 2. * PI * r2;
+
+        // update wi with the sampled half vector
+        Vector3D h(sin(theta_h) * cos(phi_h), sin(theta_h) * sin(phi_h), cos(theta_h));
+        *wi = (2. * dot(h, wo)) * h - wo;
+        wi->normalize();
+
+        // check if your sampled wi is valid. If not, return zero pdf and zero BRDF
+        if ((*wi).z < 0) {
+            *pdf = 0.;
+            return Vector3D(0.);
+        }
+    
+        // calculate pdf of sampling h wrt solid angle, define helper variables
+        double p_theta_exp = exp(-1. * pow(tan(theta_h) / alpha, 2));
+        double p_theta_fraction = (2. * sin(theta_h) / (pow(alpha, 2) * pow(cos(theta_h), 3)));
+        double p_theta = p_theta_fraction * p_theta_exp;
+        double p_phi = 1. / (2. * PI);
+        double p_w_h = p_theta * p_phi / sin(theta_h);
+
+        // calculate final pdf
+        *pdf = p_w_h / (4. * dot(*wi, h));
+
         return MicrofacetBSDF::f(wo, *wi);
     }
 
