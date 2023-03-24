@@ -170,7 +170,26 @@ namespace CGL {
 
         // TODO Project 3-2: Part 1
         // Compute Fresnel coefficient and either reflect or refract based on it.
-
+        bool refracts = refract(wo, wi, ior);
+        if (!refracts) {
+            reflect(wo, wi);
+            *pdf = 1.;
+            return reflectance / abs_cos_theta(*wi);
+        }
+        else {
+            double n1 = 1.;
+            double n2 = ior;
+            double R_0 = pow((n1 - n2)/(n1 + n2), 2);
+            double R_theta = R_0 + (1. - R_0) * pow(1. - abs_cos_theta(wo), 5);
+            if (coin_flip(R_theta)) {
+                *pdf = R_theta;
+                reflect(wo, wi);
+                return R_theta * reflectance / abs_cos_theta(*wi);
+            }
+            *pdf  = 1. - R_theta;
+            double eta = (wo.z > 0) ? 1./ior : ior;
+            return (1 - R_theta) * transmittance / abs_cos_theta(*wi) / (eta * eta);
+        }
         // compute Fresnel coefficient and use it as the probability of reflection
         // - Fundamentals of Computer Graphics page 305
         return Vector3D();
